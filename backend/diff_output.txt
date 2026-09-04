@@ -1,0 +1,64 @@
+--- veltrix
++++ coco
+@@ -1,6 +1,6 @@
+ """
+-PayStorePe_Veltrix Callback Routes
+-Handles webhook callbacks from PayStorePe_Veltrix for payout status updates
++PayStorePe_Coco Callback Routes
++Handles webhook callbacks from PayStorePe_Coco for payout status updates
+ """
+ 
+ from flask import Blueprint, request, jsonify
+@@ -8,12 +8,12 @@
+ from datetime import datetime
+ import json
+ 
+-paystorepe_veltrix_callback_bp = Blueprint('paystorepe_veltrix_callback', __name__, url_prefix='/api/callback')
+-
+-@paystorepe_veltrix_callback_bp.route('/paystorepe_veltrix/payout', methods=['POST'])
+-def paystorepe_veltrix_payout_callback():
++paystorepe_coco_callback_bp = Blueprint('paystorepe_coco_callback', __name__, url_prefix='/api/callback')
++
++@paystorepe_coco_callback_bp.route('/paystorepe_coco/payout', methods=['POST'])
++def paystorepe_coco_payout_callback():
+     """
+-    Webhook endpoint for PayStorePe_Veltrix payout callbacks
++    Webhook endpoint for PayStorePe_Coco payout callbacks
+     Handles payout status updates
+     """
+     try:
+@@ -21,7 +21,7 @@
+         callback_data = request.json or request.form.to_dict()
+         
+         print("=" * 80)
+-        print("PayStorePe_Veltrix Payout Callback Received")
++        print("PayStorePe_Coco Payout Callback Received")
+         print("=" * 80)
+         print(f"Callback Data: {json.dumps(callback_data, indent=2)}")
+         
+@@ -71,14 +71,14 @@
+                     cursor.execute("""
+                         SELECT txn_id, status, merchant_id, admin_id, reference_id, order_id, amount
+                         FROM payout_transactions
+-                        WHERE pg_txn_id = %s AND UPPER(pg_partner) = 'PAYSTOREPE_VELTRIX'
++                        WHERE pg_txn_id = %s AND UPPER(pg_partner) = 'PAYSTOREPE_COCO'
+                     """, (transaction_id,))
+                 else:
+                     # Try to find by reference_id extracted from external_ref
+                     cursor.execute("""
+                         SELECT txn_id, status, merchant_id, admin_id, reference_id, order_id, amount
+                         FROM payout_transactions
+-                        WHERE reference_id = %s AND UPPER(pg_partner) = 'PAYSTOREPE_VELTRIX'
++                        WHERE reference_id = %s AND UPPER(pg_partner) = 'PAYSTOREPE_COCO'
+                     """, (external_ref,))
+                 
+                 txn = cursor.fetchone()
+@@ -236,7 +236,7 @@
+                                 'status': mapped_status,
+                                 'utr': utr,
+                                 'pg_txn_id': transaction_id,
+-                                'pg_partner': 'PayStorePe_Veltrix',
++                                'pg_partner': 'PayStorePe_Coco',
+                                 'amount': float(amount) if amount else float(txn.get('amount') or 0),
+                                 'message': message,
+                                 'timestamp': datetime.now().isoformat()

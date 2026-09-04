@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Backup - Moneyone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .login-section {
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .backup-section {
+            display: none;
+        }
+        
+        .backup-section.active {
+            display: block;
+        }
+        
+        .backup-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .backup-info p {
+            margin-bottom: 10px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .backup-info strong {
+            color: #333;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .backup-list {
+            margin-top: 20px;
+        }
+        
+        .backup-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .backup-item-info {
+            flex: 1;
+        }
+        
+        .backup-item-info p {
+            margin: 0;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .backup-item-info .filename {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .download-btn {
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .download-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗄️ Database Backup</h1>
+        <p class="subtitle">Create and download your database backup securely</p>
+        
+        <!-- Login Section -->
+        <div class="login-section" id="loginSection">
+            <div class="form-group">
+                <label for="username">Admin Username</label>
+                <input type="text" id="username" placeholder="Enter admin username" autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Admin Password</label>
+                <input type="password" id="password" placeholder="Enter admin password" autocomplete="current-password">
+            </div>
+            
+            <button onclick="login()" id="loginBtn">Login</button>
+            
+            <div id="loginStatus"></div>
+        </div>
+        
+        <!-- Backup Section -->
+        <div class="backup-section" id="backupSection">
+            <div class="backup-info">
+                <p><strong>📋 Instructions:</strong></p>
+                <p>1. Click "Create Backup" to generate a database backup</p>
+                <p>2. Wait for the backup to complete (may take 1-5 minutes)</p>
+                <p>3. Download the backup file to your computer</p>
+                <p>4. Keep this file safe - you'll need it for RDS migration</p>
+            </div>
+            
+            <button onclick="createBackup()" id="createBackupBtn">Create New Backup</button>
+            
+            <div id="backupStatus"></div>
+            
+            <div class="backup-list" id="backupList"></div>
+        </div>
+    </div>
+    
+    <script>
+        let authToken = null;
+        
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const loginStatus = document.getElementById('loginStatus');
+            
+            if (!username || !password) {
+                loginStatus.innerHTML = '<div class="status error">Please enter username and password</div>';
+                return;
+            }
+            
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            loginStatus.innerHTML = '';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    authToken = data.token;
+                    
+                    // Check if user is admin
+                    if (data.role !== 'admin') {
+                        loginStatus.innerHTML = '<div class="status error">Admin access required</div>';
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = 'Login';
+                        return;
+                    }
+                    
+                    loginStatus.innerHTML = '<div class="status success">Login successful! Loading backups...</div>';
+                    
+                    // Show backup section
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('backupSection').classList.add('active');
+                    
+                    // Load existing backups
+                    loadBackups();
+                } else {
+                    loginStatus.innerHTML = '<div class="status error">' + (data.error || 'Login failed') + '</div>';
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login';
+                }
+            } catch (error) {
+                loginStatus.innerHTML = '<div class="status error">Connection error: ' + error.message + '</div>';
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        }
+        
+        async function createBackup() {
+            const createBtn = document.getElementById('createBackupBtn');
+            const backupStatus = document.getElementById('backupStatus');
+            
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating Backup...';
+            
+            backupStatus.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Creating database backup... This may take a few minutes.</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/api/admin/backup/create', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    backupStatus.innerHTML = `
+                        <div class="status success">
+                            <strong>✓ Backup created successfully!</strong><br>
+                            File: ${data.filename}<br>
+                            Size: ${data.size_mb} MB<br>
+                            <a href="${data.download_url}" class="download-btn" style="margin-top: 10px; display: inline-block;">Download Now</a>
+                        </div>
+                    `;
+                    
+                    // Reload backup list
+                    loadBackups();
+                } else {
+                    backupStatus.innerHTML = '<div class="status error">Backup failed: ' + (data.error || 'Unknown error') + '</div>';
+                }
+            } catch (error) {
+                backupStatus.innerHTML = '<div class="status error">Connection error: ' + error.message + '</div>';
+            } finally {
+                createBtn.disabled = false;
+                createBtn.textContent = 'Create New Backup';
+            }
+        }
+        
+        async function loadBackups() {
+            const backupList = document.getElementById('backupList');
+            
+            backupList.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading backups...</p></div>';
+            
+            try {
+                const response = await fetch('/api/admin/backup/list', {
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.backups && data.backups.length > 0) {
+                    let html = '<h3 style="margin-bottom: 15px; color: #333;">Available Backups</h3>';
+                    
+                    data.backups.forEach(backup => {
+                        html += `
+                            <div class="backup-item">
+                                <div class="backup-item-info">
+                                    <p class="filename">${backup.filename}</p>
+                                    <p>Size: ${backup.size_mb} MB | Created: ${backup.created_at}</p>
+                                </div>
+                                <a href="${backup.download_url}" class="download-btn" onclick="downloadBackup(event, '${backup.download_url}')">Download</a>
+                            </div>
+                        `;
+                    });
+                    
+                    backupList.innerHTML = html;
+                } else {
+                    backupList.innerHTML = '<div class="status info">No backups available. Create your first backup above.</div>';
+                }
+            } catch (error) {
+                backupList.innerHTML = '<div class="status error">Failed to load backups: ' + error.message + '</div>';
+            }
+        }
+        
+        function downloadBackup(event, url) {
+            event.preventDefault();
+            
+            // Create a temporary link with auth header
+            fetch(url, {
+                headers: {
+                    'Authorization': 'Bearer ' + authToken
+                }
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = event.target.href.split('/').pop();
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                alert('Download failed: ' + error.message);
+            });
+        }
+        
+        // Allow Enter key to submit login
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>

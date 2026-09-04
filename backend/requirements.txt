@@ -1,0 +1,12 @@
+Flask==3.0.0
+Flask-CORS==4.0.0
+Flask-JWT-Extended==4.6.0
+PyMySQL==1.1.0
+python-dotenv==1.0.0
+bcrypt==4.1.2
+Pillow==10.2.0
+pyzbar==0.1.9
+cryptography==42.0.0
+pytz==2024.1
+requests==2.31.0
+pycryptodome==3.19.1

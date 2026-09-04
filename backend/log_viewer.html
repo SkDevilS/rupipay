@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoneyOne Backend - Real-time API Monitor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #44ff44;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .controls {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: 500;
+        }
+
+        input, select, button {
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #45a049, #4CAF50);
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            display: flex;
+            height: calc(100vh - 200px);
+        }
+
+        .log-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.8);
+            margin: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-header {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .log-content {
+            height: calc(100% - 60px);
+            overflow-y: auto;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .log-line {
+            margin: 3px 0;
+            padding: 8px 12px;
+            border-radius: 5px;
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-line:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .log-line.request {
+            background: rgba(33, 150, 243, 0.1);
+            border-left-color: #2196F3;
+        }
+
+        .log-line.response {
+            background: rgba(76, 175, 80, 0.1);
+            border-left-color: #4CAF50;
+        }
+
+        .log-line.error {
+            background: rgba(244, 67, 54, 0.1);
+            border-left-color: #f44336;
+        }
+
+        .log-line.warning {
+            background: rgba(255, 193, 7, 0.1);
+            border-left-color: #FFC107;
+        }
+
+        .log-timestamp {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .log-method {
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .log-method.GET { color: #4CAF50; }
+        .log-method.POST { color: #2196F3; }
+        .log-method.PUT { color: #FF9800; }
+        .log-method.DELETE { color: #f44336; }
+
+        .log-endpoint {
+            color: #E1F5FE;
+        }
+
+        .log-status {
+            margin-left: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .log-status.success { background: #4CAF50; }
+        .log-status.error { background: #f44336; }
+        .log-status.warning { background: #FF9800; }
+
+        .sidebar {
+            flex: 1;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .stats-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stats-panel h3 {
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+
+        .chart-container {
+            height: 200px;
+            margin: 15px 0;
+        }
+
+        .method-stats, .endpoint-stats {
+            margin: 15px 0;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .auto-scroll-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-size: 12px;
+            display: none;
+        }
+
+        .auto-scroll-indicator.active {
+            display: block;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                max-width: none;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                justify-content: space-between;
+            }
+        }
+
+        /* Scrollbar styling */
+        .log-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .log-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .log-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MoneyOne Backend</h1>
+        <div class="subtitle">Real-time API Monitor & Log Viewer</div>
+    </div>
+
+    <div class="status-bar">
+        <div class="connection-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="connectionStatus">Connecting...</span>
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalRequests">0</div>
+                <div class="stat-label">Total Requests</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="recentActivity">0</div>
+                <div class="stat-label">Last 5 min</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="currentTime">--:--:--</div>
+                <div class="stat-label">Current Time</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Search:</label>
+            <input type="text" id="searchInput" placeholder="Filter logs..." />
+        </div>
+        <div class="control-group">
+            <label>Level:</label>
+            <select id="levelFilter">
+                <option value="">All Levels</option>
+                <option value="INFO">INFO</option>
+                <option value="ERROR">ERROR</option>
+                <option value="WARNING">WARNING</option>
+                <option value="DEBUG">DEBUG</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Lines:</label>
+            <select id="linesSelect">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+            </select>
+        </div>
+        <button onclick="loadLogs()">Refresh</button>
+        <button onclick="clearLogs()">Clear</button>
+        <button onclick="toggleAutoScroll()" id="autoScrollBtn">Auto-scroll: ON</button>
+    </div>
+
+    <div class="main-content">
+        <div class="log-panel">
+            <div class="log-container">
+                <div class="log-header">
+                    <h3>Live API Logs</h3>
+                    <span id="logCount">0 logs</span>
+                </div>
+                <div class="log-content" id="logContainer"></div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="stats-panel">
+                <h3>📊 Request Statistics</h3>
+                <div class="chart-container">
+                    <canvas id="methodChart"></canvas>
+                </div>
+                <div class="method-stats" id="methodStats"></div>
+            </div>
+
+            <div class="stats-panel">
+                <h3>🎯 Top Endpoints</h3>
+                <div class="endpoint-stats" id="endpointStats"></div>
+            </div>
+
+            <div class="stats-panel">
+                <h3>📈 Status Codes</h3>
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="auto-scroll-indicator" id="autoScrollIndicator">
+        Auto-scroll enabled
+    </div>
+
+    <script>
+        // Global variables
+        const socket = io();
+        let autoScroll = true;
+        let logCount = 0;
+        let methodChart, statusChart;
+
+        // DOM elements
+        const logContainer = document.getElementById('logContainer');
+        const statusDot = document.getElementById('statusDot');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const searchInput = document.getElementById('searchInput');
+        const levelFilter = document.getElementById('levelFilter');
+        const linesSelect = document.getElementById('linesSelect');
+        const autoScrollBtn = document.getElementById('autoScrollBtn');
+        const autoScrollIndicator = document.getElementById('autoScrollIndicator');
+
+        // Initialize charts
+        function initCharts() {
+            const methodCtx = document.getElementById('methodChart').getContext('2d');
+            methodChart = new Chart(methodCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: ['#4CAF50', '#2196F3', '#FF9800', '#f44336', '#9C27B0']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#fff' }
+                        }
+                    }
+                }
+            });
+
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            statusChart = new Chart(statusCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: '#4CAF50'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { color: '#fff' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: {
+                            ticks: { color: '#fff' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            statusDot.classList.add('connected');
+            connectionStatus.textContent = 'Connected';
+            loadLogs();
+            loadStats();
+        });
+
+        socket.on('disconnect', function() {
+            statusDot.classList.remove('connected');
+            connectionStatus.textContent = 'Disconnected';
+        });
+
+        socket.on('new_log', function(data) {
+            addLogLine(data);
+            logCount++;
+            updateLogCount();
+        });
+
+        // Add log line to display
+        function addLogLine(logData) {
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+            
+            // Determine log type and styling
+            if (logData.api && logData.api.type === 'request') {
+                logLine.classList.add('request');
+            } else if (logData.api && logData.api.type === 'response') {
+                logLine.classList.add('response');
+            }
+            
+            if (logData.level === 'ERROR') {
+                logLine.classList.add('error');
+            } else if (logData.level === 'WARNING') {
+                logLine.classList.add('warning');
+            }
+
+            // Build log line HTML
+            let html = `<span class="log-timestamp">${logData.formatted_time}</span>`;
+            
+            if (logData.api && logData.api.method) {
+                html += `<span class="log-method ${logData.api.method}">${logData.api.method}</span>`;
+            }
+            
+            if (logData.api && logData.api.endpoint) {
+                html += `<span class="log-endpoint">${logData.api.endpoint}</span>`;
+            }
+            
+            if (logData.api && logData.api.ip) {
+                html += ` <span style="color: #888;">from ${logData.api.ip}</span>`;
+            }
+            
+            if (logData.api && logData.api.status) {
+                const statusClass = logData.api.status < 300 ? 'success' : 
+                                  logData.api.status < 500 ? 'warning' : 'error';
+                html += `<span class="log-status ${statusClass}">${logData.api.status}</span>`;
+            }
+            
+            // If no API info, show the raw message
+            if (!logData.api || Object.keys(logData.api).length === 0) {
+                html += `<span>${logData.message}</span>`;
+            }
+            
+            logLine.innerHTML = html;
+            logContainer.appendChild(logLine);
+            
+            // Auto-scroll if enabled
+            if (autoScroll) {
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+            
+            // Keep only last 1000 lines for performance
+            while (logContainer.children.length > 1000) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        // Load logs from API
+        function loadLogs() {
+            const lines = linesSelect.value;
+            const search = searchInput.value;
+            const level = levelFilter.value;
+            
+            fetch(`/api/logs?lines=${lines}&search=${encodeURIComponent(search)}&level=${level}`)
+                .then(response => response.json())
+                .then(data => {
+                    logContainer.innerHTML = '';
+                    logCount = 0;
+                    
+                    if (data.logs) {
+                        data.logs.forEach(logData => {
+                            addLogLine(logData);
+                            logCount++;
+                        });
+                    }
+                    
+                    updateLogCount();
+                })
+                .catch(error => console.error('Error loading logs:', error));
+        }
+
+        // Load statistics
+        function loadStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Update counters
+                    document.getElementById('totalRequests').textContent = data.total_requests || 0;
+                    document.getElementById('recentActivity').textContent = data.recent_activity || 0;
+                    
+                    // Update method chart
+                    if (data.methods && Object.keys(data.methods).length > 0) {
+                        methodChart.data.labels = Object.keys(data.methods);
+                        methodChart.data.datasets[0].data = Object.values(data.methods);
+                        methodChart.update();
+                        
+                        // Update method stats
+                        const methodStats = document.getElementById('methodStats');
+                        methodStats.innerHTML = '';
+                        Object.entries(data.methods).forEach(([method, count]) => {
+                            const row = document.createElement('div');
+                            row.className = 'stat-row';
+                            row.innerHTML = `<span>${method}</span><span>${count}</span>`;
+                            methodStats.appendChild(row);
+                        });
+                    }
+                    
+                    // Update status chart
+                    if (data.status_codes && Object.keys(data.status_codes).length > 0) {
+                        statusChart.data.labels = Object.keys(data.status_codes);
+                        statusChart.data.datasets[0].data = Object.values(data.status_codes);
+                        statusChart.update();
+                    }
+                    
+                    // Update endpoint stats
+                    if (data.endpoints && Object.keys(data.endpoints).length > 0) {
+                        const endpointStats = document.getElementById('endpointStats');
+                        endpointStats.innerHTML = '';
+                        
+                        // Show top 10 endpoints
+                        const sortedEndpoints = Object.entries(data.endpoints)
+                            .sort(([,a], [,b]) => b - a)
+                            .slice(0, 10);
+                            
+                        sortedEndpoints.forEach(([endpoint, count]) => {
+                            const row = document.createElement('div');
+                            row.className = 'stat-row';
+                            const shortEndpoint = endpoint.length > 25 ? 
+                                endpoint.substring(0, 25) + '...' : endpoint;
+                            row.innerHTML = `<span title="${endpoint}">${shortEndpoint}</span><span>${count}</span>`;
+                            endpointStats.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading stats:', error));
+        }
+
+        // Utility functions
+        function clearLogs() {
+            logContainer.innerHTML = '';
+            logCount = 0;
+            updateLogCount();
+        }
+
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            autoScrollBtn.textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+            autoScrollIndicator.classList.toggle('active', autoScroll);
+        }
+
+        function updateLogCount() {
+            document.getElementById('logCount').textContent = `${logCount} logs`;
+        }
+
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+        }
+
+        // Event listeners
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                loadLogs();
+            }
+        });
+
+        levelFilter.addEventListener('change', loadLogs);
+        linesSelect.addEventListener('change', loadLogs);
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+            setInterval(loadStats, 10000); // Update stats every 10 seconds
+        });
+    </script>
+</body>
+</html>

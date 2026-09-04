@@ -1,0 +1,459 @@
+{
+  "info": {
+    "name": "Moneyone Payout API",
+    "description": "Complete API collection for Moneyone Payout Integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.moneyone.co.in/api",
+      "type": "string"
+    },
+    {
+      "key": "merchant_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "merchant_id",
+      "value": "9000000001",
+      "type": "string"
+    },
+    {
+      "key": "bank_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Get Captcha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/merchant/captcha",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "captcha"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Merchant Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.success && jsonData.token) {",
+                  "        pm.collectionVariables.set('merchant_token', jsonData.token);",
+                  "        console.log('Token saved:', jsonData.token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchant_id}}\",\n  \"password\": \"your_password\",\n  \"captcha\": \"ABCD\",\n  \"sessionId\": \"test_session\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/merchant/login",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bank Management",
+      "item": [
+        {
+          "name": "Get Bank Accounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.success && jsonData.banks && jsonData.banks.length > 0) {",
+                  "        pm.collectionVariables.set('bank_id', jsonData.banks[0].id);",
+                  "        console.log('Bank ID saved:', jsonData.banks[0].id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/merchant/banks",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "banks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Bank Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankName\": \"State Bank of India\",\n  \"accountNumber\": \"1234567890\",\n  \"ifscCode\": \"SBIN0001234\",\n  \"branchName\": \"New Delhi Branch\",\n  \"accountHolderName\": \"John Doe\",\n  \"tpin\": \"1234\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/merchant/banks",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "banks"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "Get Wallet Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/merchant/wallet/overview",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "wallet", "overview"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet Statement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payout/client/wallet-statement?page=1&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["payout", "client", "wallet-statement"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payout",
+      "item": [
+        {
+          "name": "Direct Payout (IMPS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000.00,\n  \"tpin\": \"1234\",\n  \"account_holder_name\": \"John Doe\",\n  \"account_number\": \"1234567890\",\n  \"ifsc_code\": \"SBIN0001234\",\n  \"bank_name\": \"State Bank of India\",\n  \"payment_type\": \"IMPS\",\n  \"purpose\": \"Vendor Payment\",\n  \"bene_email\": \"john@example.com\",\n  \"bene_mobile\": \"9876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payout/client/direct-payout",
+              "host": ["{{base_url}}"],
+              "path": ["payout", "client", "direct-payout"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Settle Fund (Payout)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bank_id\": {{bank_id}},\n  \"amount\": 1000.00,\n  \"tpin\": \"1234\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payout/client/settle-fund",
+              "host": ["{{base_url}}"],
+              "path": ["payout", "client", "settle-fund"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payout Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payout/client/report?page=1&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["payout", "client", "report"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "status",
+                  "value": "SUCCESS",
+                  "disabled": true
+                },
+                {
+                  "key": "from_date",
+                  "value": "2025-02-01",
+                  "disabled": true
+                },
+                {
+                  "key": "to_date",
+                  "value": "2025-02-28",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payout Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payout/client/stats",
+              "host": ["{{base_url}}"],
+              "path": ["payout", "client", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending Payouts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payout/client/report?status=QUEUED,INITIATED,INPROCESS",
+              "host": ["{{base_url}}"],
+              "path": ["payout", "client", "report"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "QUEUED,INITIATED,INPROCESS"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Fund Management",
+      "item": [
+        {
+          "name": "Create Fund Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000.00,\n  \"remarks\": \"Fund request for business operations\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payout/client/fund-request",
+              "host": ["{{base_url}}"],
+              "path": ["payout", "client", "fund-request"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Fund Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payout/client/fund-requests?status=PENDING",
+              "host": ["{{base_url}}"],
+              "path": ["payout", "client", "fund-requests"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Security",
+      "item": [
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"old_password\",\n  \"newPassword\": \"new_password\",\n  \"confirmPassword\": \"new_password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/merchant/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "change-password"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change TPIN",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchant_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPin\": \"1234\",\n  \"newPin\": \"5678\",\n  \"confirmPin\": \"5678\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/merchant/change-pin",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "change-pin"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
